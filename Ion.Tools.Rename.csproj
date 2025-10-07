@@ -15,7 +15,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Ion\Ion.csproj" />
-    <ProjectReference Include="..\Ion.Tool.Core\Ion.Tools.csproj" />
+    <ProjectReference Include="..\Ion.Tools\Ion.Tools.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Image\Folder.png" />
   </ItemGroup>
 
 </Project>
