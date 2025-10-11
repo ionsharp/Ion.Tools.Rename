@@ -38,8 +38,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <ImplicitUsings>enable</ImplicitUsings>
+    <NeutralLanguage>en</NeutralLanguage>
+    <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
