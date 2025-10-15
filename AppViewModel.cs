@@ -1,13 +1,24 @@
 ﻿using Ion;
+using Ion.Analysis;
 using Ion.Core;
+using Ion.Input;
+using Ion.Storage;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
+using System.Windows.Input;
 
 namespace Ion.Tools.Rename;
 
-public record class MainViewModel : Model
+/// <remarks>https://stackoverflow.com/questions/923771/quickest-way-to-convert-a-base-10-number-to-any-base-in-net</remarks>
+[NotComplete]
+public record class AppViewModel : AppToolViewModel
 {
+    private bool isDoing = false;
+
+    /// <see cref="Region.Property"/>
+
     public ObservableCollection<FilePreview> Files { get => Get<ObservableCollection<FilePreview>>(); set => Set(value); }
 
     public Int32 FileExtension { get => Get(2); set => Set(value); }
@@ -16,26 +27,29 @@ public record class MainViewModel : Model
 
     public Int32 FileNameIncrementBase { get => Get(1); set => Set(value); }
 
-    [NotComplete]
+    [NotImplemented]
     public Int32 FileNameIncrementBy { get => Get(0); set => Set(value); }
 
     public String FileNameIncrementStart { get => Get("1"); set => Set(value); }
 
     public Int32 FileSort { get => Get(1); set => Set(value); }
 
-    [NotComplete]
     public Int32 FileSortDirection { get => Get(0); set => Set(value); }
     
     public String FolderPath { get => Get(""); set => Set(value); }
 
-    ///
+    public Result Result { get => Get(default(Result)); set => Set(value); }
 
-    public MainViewModel() : base()
+    public override string Title => nameof(Rename);
+
+    /// <see cref="Region.Constructor"/>
+
+    public AppViewModel() : base()
     {
         Files = [];
     }
 
-    ///
+    /// <see cref="Region.Method"/>
 
     private static string getBase(int value, char[] baseChars)
     {
@@ -56,6 +70,7 @@ public record class MainViewModel : Model
 
     private static Random random = new Random();
 
+    [NotOptimized]
     private static string getRandomString(int length)
     {
         var characters = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -74,19 +89,43 @@ public record class MainViewModel : Model
     private IEnumerable<FileInfo> getFiles(DirectoryInfo folder)
     {
         var searchPattern = "*.*";
-        switch (FileSort)
+        var searchQuery = folder.GetFiles(searchPattern);
+
+        switch (FileSortDirection)
         {
+            /// Ascending
             default:
             case 0:
-                return folder.GetFiles(searchPattern).OrderBy(y => y.LastAccessTime);
+                switch (FileSort)
+                {
+                    default:
+                    case 0:
+                        return searchQuery.OrderBy(y => y.LastAccessTime);
+                    case 1:
+                        return searchQuery.OrderBy(y => y.CreationTime);
+                    case 2:
+                        return searchQuery.OrderBy(y => y.Extension);
+                    case 3:
+                        return searchQuery.OrderBy(y => y.LastWriteTime);
+                    case 4:
+                        return searchQuery.OrderBy(y => y.Name);
+                }
+            /// Descending
             case 1:
-                return folder.GetFiles(searchPattern).OrderBy(y => y.CreationTime);
-            case 2:
-                return folder.GetFiles(searchPattern).OrderBy(y => y.Extension);
-            case 3:
-                return folder.GetFiles(searchPattern).OrderBy(y => y.LastWriteTime);
-            case 4:
-                return folder.GetFiles(searchPattern).OrderBy(y => y.Name);
+                switch (FileSort)
+                {
+                    default:
+                    case 0:
+                        return searchQuery.OrderByDescending(y => y.LastAccessTime);
+                    case 1:
+                        return searchQuery.OrderByDescending(y => y.CreationTime);
+                    case 2:
+                        return searchQuery.OrderByDescending(y => y.Extension);
+                    case 3:
+                        return searchQuery.OrderByDescending(y => y.LastWriteTime);
+                    case 4:
+                        return searchQuery.OrderByDescending(y => y.Name);
+                }
         }
     }
 
@@ -120,14 +159,6 @@ public record class MainViewModel : Model
             /// (16) Hexadecimal
             case 2:
                 return getBase(index, new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' });
-            /// (26) Hexavigesimal
-            case 3:
-                return getBase(index, Enumerable.Range('A', 26).Select(x => (char)x).ToArray());
-            /// (60) Sexagesimal
-            case 4:
-                return getBase(index, new char[] { '0','1','2','3','4','5','6','7','8','9',
-                'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
-                'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x'});
 
             default: goto case 1;
         }
@@ -141,6 +172,7 @@ public record class MainViewModel : Model
         switch (e.PropertyName)
         {
             case nameof(FileExtension):
+            case nameof(FileNameIncrement):
             case nameof(FileNameIncrementBase):
             case nameof(FileNameIncrementBy):
             case nameof(FileNameIncrementStart):
@@ -159,6 +191,7 @@ public record class MainViewModel : Model
         Files.Clear();
 
         var folder = new DirectoryInfo(FolderPath);
+
         int.TryParse(FileNameIncrementStart, out int count);
         int.TryParse(FileNameIncrement, out int increment);
 
@@ -175,34 +208,49 @@ public record class MainViewModel : Model
         }
     }
 
-    public void Do()
+    ///
+
+    [NotTested]
+    async public void Do()
     {
-        var folder = new DirectoryInfo(FolderPath);
-        int.TryParse(FileNameIncrementStart, out int count);
-        int.TryParse(FileNameIncrement, out int increment);
+        if (isDoing) { return; }
+        isDoing = true;
 
-        foreach (var x in getFiles(folder))
+        var result = await Dialog.ShowProgress("Renaming...", "Renaming. Please wait...", _ =>
         {
-            var i = getRandomString(8) + getFileExtension(x.Extension);
-            var j = Path.Combine(x.Directory.FullName, i);
+            var folder = new DirectoryInfo(FolderPath);
+            int.TryParse(FileNameIncrementStart, out int count);
+            int.TryParse(FileNameIncrement, out int increment);
 
-            File.Move(x.FullName, j);
-        }
-        foreach (var x in getFiles(folder))
-        {
-            var h = getFileExtension(x.Extension);
-            var i = getFileName(count) + h;
-            var j = Path.Combine(x.Directory.FullName, i);
-
-            while (File.Exists(j))
+            foreach (var x in getFiles(folder))
             {
+                var i = getRandomString(8) + getFileExtension(x.Extension);
+                var j = Path.Combine(x.Directory.FullName, i);
+
+                System.IO.File.Move(x.FullName, j);
+            }
+            foreach (var x in getFiles(folder))
+            {
+                var h = getFileExtension(x.Extension);
+                var i = getFileName(count) + h;
+                var j = Path.Combine(x.Directory.FullName, i);
+
+                while (System.IO.File.Exists(j))
+                {
+                    count += increment;
+                    i = getFileName(count) + h;
+                    j = Path.Combine(x.Directory.FullName, i);
+                }
+
+                System.IO.File.Move(x.FullName, j);
                 count += increment;
-                i = getFileName(count) + h;
-                j = Path.Combine(x.Directory.FullName, i);
             }
 
-            File.Move(x.FullName, j);
-            count += increment;
-        }
+        }, TimeSpan.FromSeconds(3), true);
+
+        Result = result is Success ? new Success("Files renamed!") : result;
+        isDoing = false;
     }
+
+    public ICommand DoCommand => Commands[nameof(DoCommand)] ??= new RelayCommand(() => Do(), () => true);
 }

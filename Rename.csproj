@@ -16,7 +16,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <AssemblyName>Ion.Tools.Rename</AssemblyName>
+    <AssemblyName>Rename</AssemblyName>
     <AssemblyTitle>Ion.Tools.Rename</AssemblyTitle>
     <RootNamespace>Ion.Tools.Rename</RootNamespace>
   </PropertyGroup>
@@ -32,7 +32,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ApplicationIcon>Image\Logo.ico</ApplicationIcon>
+    <ApplicationIcon>Image\Logo512.ico</ApplicationIcon>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.0</ApplicationVersion>
   </PropertyGroup>
@@ -46,7 +46,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Image\Logo.ico" />
+    <Content Include="Image\Logo512.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -65,7 +65,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Image\Folder.png" />
+    <Resource Include="Image\Logo16.png" />
   </ItemGroup>
 
 </Project>
