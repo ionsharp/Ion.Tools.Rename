@@ -19,7 +19,7 @@ public record class AppViewModel : AppToolViewModel
 
     /// <see cref="Region.Property"/>
 
-    public ObservableCollection<FilePreview> Files { get => Get<ObservableCollection<FilePreview>>(); set => Set(value); }
+    public ObservableCollection<FileChange> Files { get => Get<ObservableCollection<FileChange>>(); set => Set(value); }
 
     public Int32 FileExtension { get => Get(2); set => Set(value); }
 
@@ -190,22 +190,27 @@ public record class AppViewModel : AppToolViewModel
     {
         Files.Clear();
 
-        var folder = new DirectoryInfo(FolderPath);
-
-        int.TryParse(FileNameIncrementStart, out int count);
-        int.TryParse(FileNameIncrement, out int increment);
-
-        foreach (var x in getFiles(folder))
+        try
         {
-            var file = new FilePreview
-            {
-                OldName = x.Name,
-                NewName = getFileName(count) + getFileExtension(x.Extension)
-            };
+            Throw.If<FolderNotFound>(!Folder.Exists(FolderPath));
+            var folder = new DirectoryInfo(FolderPath);
 
-            Files.Add(file);
-            count += increment;
+            int.TryParse(FileNameIncrementStart, out int count);
+            int.TryParse(FileNameIncrement, out int increment);
+
+            foreach (var x in getFiles(folder))
+            {
+                var file = new FileChange
+                {
+                    OldName = x.Name,
+                    NewName = getFileName(count) + getFileExtension(x.Extension)
+                };
+
+                Files.Add(file);
+                count += increment;
+            }
         }
+        catch { }
     }
 
     ///
@@ -218,7 +223,10 @@ public record class AppViewModel : AppToolViewModel
 
         var result = await Dialog.ShowProgress("Renaming...", "Renaming. Please wait...", _ =>
         {
+            Throw.If<FolderNotFound>(!Folder.Exists(FolderPath));
+
             var folder = new DirectoryInfo(FolderPath);
+
             int.TryParse(FileNameIncrementStart, out int count);
             int.TryParse(FileNameIncrement, out int increment);
 
@@ -227,7 +235,7 @@ public record class AppViewModel : AppToolViewModel
                 var i = getRandomString(8) + getFileExtension(x.Extension);
                 var j = Path.Combine(x.Directory.FullName, i);
 
-                System.IO.File.Move(x.FullName, j);
+                Storage.File.Move(x.FullName, j);
             }
             foreach (var x in getFiles(folder))
             {
@@ -235,14 +243,14 @@ public record class AppViewModel : AppToolViewModel
                 var i = getFileName(count) + h;
                 var j = Path.Combine(x.Directory.FullName, i);
 
-                while (System.IO.File.Exists(j))
+                while (Storage.File.Exists(j))
                 {
                     count += increment;
                     i = getFileName(count) + h;
                     j = Path.Combine(x.Directory.FullName, i);
                 }
 
-                System.IO.File.Move(x.FullName, j);
+                Storage.File.Move(x.FullName, j);
                 count += increment;
             }
 

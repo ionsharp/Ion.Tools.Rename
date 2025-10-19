@@ -2,7 +2,7 @@
 
 namespace Ion.Tools.Rename;
 
-public record class FilePreview : Model
+public record class FileChange : Model
 {
     public String OldName { get => Get(""); set => Set(value); }
 
